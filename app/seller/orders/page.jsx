@@ -1,73 +1,179 @@
 'use client';
-import React, { useEffect, useState } from "react";
-import { assets, orderDummyData } from "@/assets/assets";
+import { toast } from 'sonner';
+import React, { useState } from "react";
+import { assets } from "@/assets/assets";
 import Image from "next/image";
 import { useAppContext } from "@/context/AppContext";
-import Footer from "@/components/seller/Footer";
-import Loading from "@/components/Loading";
+import axios from "axios";
 
-const Orders = () => {
+const AddProduct = () => {
+  const { getToken } = useAppContext();
 
-    const { currency } = useAppContext();
+  const [files, setFiles] = useState([]);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('Earphone');
+  const [price, setPrice] = useState('');
+  const [offerPrice, setOfferPrice] = useState('');
 
-    const [orders, setOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-    const fetchSellerOrders = async () => {
-        setOrders(orderDummyData);
-        setLoading(false);
+    const formData = new FormData();
+    formData.append('name', name);
+    formData.append('description', description);
+    formData.append('category', category);
+    formData.append('price', price);
+    formData.append('offerPrice', offerPrice);
+
+    for (let i = 0; i < files.length; i++) {
+      formData.append('image', files[i]); // Cloudinary expects 'image'
     }
 
-    useEffect(() => {
-        fetchSellerOrders();
-    }, []);
+    try {
+      const token = await getToken();
 
-    return (
-        <div className="flex-1 h-screen overflow-scroll flex flex-col justify-between text-sm">
-            {loading ? <Loading /> : <div className="md:p-10 p-4 space-y-5">
-                <h2 className="text-lg font-medium">Orders</h2>
-                <div className="max-w-4xl rounded-md">
-                    {orders.map((order, index) => (
-                        <div key={index} className="flex flex-col md:flex-row gap-5 justify-between p-5 border-t border-gray-300">
-                            <div className="flex-1 flex gap-5 max-w-80">
-                                <Image
-                                    className="max-w-16 max-h-16 object-cover"
-                                    src={assets.box_icon}
-                                    alt="box_icon"
-                                />
-                                <p className="flex flex-col gap-3">
-                                    <span className="font-medium">
-                                        {order.items.map((item) => item.product.name + ` x ${item.quantity}`).join(", ")}
-                                    </span>
-                                    <span>Items : {order.items.length}</span>
-                                </p>
-                            </div>
-                            <div>
-                                <p>
-                                    <span className="font-medium">{order.address.fullName}</span>
-                                    <br />
-                                    <span >{order.address.area}</span>
-                                    <br />
-                                    <span>{`${order.address.city}, ${order.address.state}`}</span>
-                                    <br />
-                                    <span>{order.address.phoneNumber}</span>
-                                </p>
-                            </div>
-                            <p className="font-medium my-auto">{currency}{order.amount}</p>
-                            <div>
-                                <p className="flex flex-col">
-                                    <span>Method : COD</span>
-                                    <span>Date : {new Date(order.date).toLocaleDateString()}</span>
-                                    <span>Payment : Pending</span>
-                                </p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>}
-            <Footer />
+      const { data } = await axios.post(
+        '/api/product', // ✅ FIXED: Correct route
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (data.success) {
+        toast.success(data.message);
+        setFiles([]);
+        setName('');
+        setDescription('');
+        setCategory('Earphone');
+        setPrice('');
+        setOfferPrice('');
+      } else {
+        toast.error(data.message);
+      }
+
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Something went wrong.");
+      console.error("Add Product Error:", error);
+    }
+  };
+
+  return (
+    <div className="flex-1 min-h-screen flex flex-col justify-between">
+      <form onSubmit={handleSubmit} className="md:p-10 p-4 space-y-5 max-w-lg">
+        {/* Image Upload Section */}
+        <div>
+          <p className="text-base font-medium">Product Image</p>
+          <div className="flex flex-wrap items-center gap-3 mt-2">
+            {[...Array(4)].map((_, index) => (
+              <label key={index} htmlFor={`image${index}`}>
+                <input
+                  onChange={(e) => {
+                    const updatedFiles = [...files];
+                    updatedFiles[index] = e.target.files[0];
+                    setFiles(updatedFiles);
+                  }}
+                  type="file"
+                  id={`image${index}`}
+                  hidden
+                />
+                <Image
+                  className="max-w-24 cursor-pointer"
+                  src={files[index] ? URL.createObjectURL(files[index]) : assets.upload_area}
+                  alt="Product Preview"
+                  width={100}
+                  height={100}
+                />
+              </label>
+            ))}
+          </div>
         </div>
-    );
+
+        {/* Product Name */}
+        <div className="flex flex-col gap-1 max-w-md">
+          <label className="text-base font-medium" htmlFor="product-name">Product Name</label>
+          <input
+            id="product-name"
+            type="text"
+            placeholder="Type here"
+            className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
+            onChange={(e) => setName(e.target.value)}
+            value={name}
+            required
+          />
+        </div>
+
+        {/* Product Description */}
+        <div className="flex flex-col gap-1 max-w-md">
+          <label className="text-base font-medium" htmlFor="product-description">Product Description</label>
+          <textarea
+            id="product-description"
+            rows={4}
+            className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40 resize-none"
+            placeholder="Type here"
+            onChange={(e) => setDescription(e.target.value)}
+            value={description}
+            required
+          ></textarea>
+        </div>
+
+        {/* Category, Price, Offer Price */}
+        <div className="flex items-center gap-5 flex-wrap">
+          <div className="flex flex-col gap-1 w-32">
+            <label className="text-base font-medium" htmlFor="category">Category</label>
+            <select
+              id="category"
+              className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
+              onChange={(e) => setCategory(e.target.value)}
+              value={category}
+            >
+              <option value="Earphone">Earphone</option>
+              <option value="Headphone">Headphone</option>
+              <option value="Watch">Watch</option>
+              <option value="Smartphone">Smartphone</option>
+              <option value="Laptop">Laptop</option>
+              <option value="Camera">Camera</option>
+              <option value="Accessories">Accessories</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1 w-32">
+            <label className="text-base font-medium" htmlFor="product-price">Product Price</label>
+            <input
+              id="product-price"
+              type="number"
+              placeholder="0"
+              className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
+              onChange={(e) => setPrice(e.target.value)}
+              value={price}
+              required
+            />
+          </div>
+
+          <div className="flex flex-col gap-1 w-32">
+            <label className="text-base font-medium" htmlFor="offer-price">Offer Price</label>
+            <input
+              id="offer-price"
+              type="number"
+              placeholder="0"
+              className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
+              onChange={(e) => setOfferPrice(e.target.value)}
+              value={offerPrice}
+              required
+            />
+          </div>
+        </div>
+
+        {/* Submit Button */}
+        <button type="submit" className="px-8 py-2.5 bg-orange-600 text-white font-medium rounded">
+          ADD
+        </button>
+      </form>
+    </div>
+  );
 };
 
-export default Orders;
+export default AddProduct;
