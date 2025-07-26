@@ -1,23 +1,38 @@
-import {getAuth} from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server"; // ✅ Correct path
+import User from "@/models/User";
+import connectDB from "@/config/db";
 
-export async function GET(request) {
+export async function GET(request){
+  try {
+    const { userId } = auth();
 
-    try {
-        
-        const {userId} = getAuth(request)
-
-        await connectDB()
-        const user = await User.findby(userId)
-
-        if(!user) {
-            return NextResponce,json({ success: false, message: "User Not Found"})
-        }
-
-        return NextResponce.json({success:true,user})
-
-    } catch (error) {
-         return NextResponce,json({ success: false, message: error.message})
-        }
-
+    if (!userId) {
+      return NextResponse.json({
+        success: false,
+        message: "Unauthorized access",
+      });
     }
-    
+
+    await connectDB();
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return NextResponse.json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    return NextResponse.json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
