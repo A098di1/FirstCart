@@ -1,4 +1,5 @@
 'use client';
+
 import { toast } from 'sonner';
 import React, { useState } from "react";
 import { assets } from "@/assets/assets";
@@ -34,7 +35,7 @@ const AddProduct = () => {
       const token = await getToken();
 
       const { data } = await axios.post(
-        '/api/product', // ✅ FIXED: Correct route
+        '/api/product/add',
         formData,
         {
           headers: {
@@ -43,8 +44,10 @@ const AddProduct = () => {
         }
       );
 
-      if (data.success) {
-        toast.success(data.message);
+      console.log("✅ Server Response:", data); // Debug line
+
+      if (data?.success) {
+        toast.success(data.message || "Product uploaded successfully!");
         setFiles([]);
         setName('');
         setDescription('');
@@ -52,12 +55,12 @@ const AddProduct = () => {
         setPrice('');
         setOfferPrice('');
       } else {
-        toast.error(data.message);
+        toast.error(data.message || "Upload failed.");
       }
 
     } catch (error) {
       toast.error(error.response?.data?.message || "Something went wrong.");
-      console.error("Add Product Error:", error);
+      console.error("❌ Add Product Error:", error);
     }
   };
 

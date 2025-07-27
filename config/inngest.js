@@ -1,15 +1,16 @@
 import { Inngest } from "inngest";
-import connectDB from "./db"; // or "@/lib/db" depending on your structure
-import User from "@/models/User"; // ✅ Make sure this path is correct
+import connectDB from "./db"; // ✅ Ensure this path is correct
+import User from "@/models/User";
+import Order from "@/models/Order"; // ✅ You forgot to import this
 
-// Create a client to send and receive events
+// 1. ✅ Create Inngest client
 export const inngest = new Inngest({ id: "quickcart-next" });
 
-// 🔄 Inngest function to save user data to the database
+/**
+ * 📥 Clerk User Created → Save to DB
+ */
 export const syncUserCreation = inngest.createFunction(
-  {
-    id: "sync-user-from-clerk",
-  },
+  { id: "sync-user-from-clerk" },
   { event: "clerk/user.created" },
   async ({ event }) => {
     const {
@@ -22,21 +23,23 @@ export const syncUserCreation = inngest.createFunction(
 
     const userData = {
       _id: id,
-      email: email_addresses[0].email_address,
+      email: email_addresses[0]?.email_address,
       name: `${first_name} ${last_name}`,
       imageUrl: image_url,
     };
 
-    await connectDB(); // ✅ Connect to DB
-    await User.create(userData); // ✅ Create new user
+    await connectDB();
+    await User.create(userData);
+
+    return { success: true };
   }
 );
 
-// ✏️ Update user data
+/**
+ * ✏️ Clerk User Updated → Update DB
+ */
 export const syncUserUpdation = inngest.createFunction(
-  {
-    id: "update-user-from-clerk",
-  },
+  { id: "update-user-from-clerk" },
   { event: "clerk/user.updated" },
   async ({ event }) => {
     const {
@@ -48,27 +51,58 @@ export const syncUserUpdation = inngest.createFunction(
     } = event.data;
 
     const userData = {
-      _id: id,
-      email: email_addresses[0].email_address,
+      email: email_addresses[0]?.email_address,
       name: `${first_name} ${last_name}`,
       imageUrl: image_url,
     };
 
-    await connectDB(); // ✅ Connect to DB
-    await User.findByIdAndUpdate(id, userData); // ✅ Update user
+    await connectDB();
+    await User.findByIdAndUpdate(id, userData);
+
+    return { success: true };
   }
 );
 
-// ❌ Delete user
+/**
+ * ❌ Clerk User Deleted → Remove from DB
+ */
 export const syncUserDeletion = inngest.createFunction(
-  {
-    id: "delete-user-with-clerk",
-  },
+  { id: "delete-user-with-clerk" },
   { event: "clerk/user.deleted" },
   async ({ event }) => {
     const { id } = event.data;
 
-    await connectDB(); // ✅ Connect to DB
-    await User.findByIdAndDelete(id); // ✅ Delete user
+    await connectDB();
+    await User.findByIdAndDelete(id);
+
+    return { success: true };
+  }
+);
+
+/**
+ * 📦 Order Created → Batch insert into DB
+ */
+export const createUserOrder = inngest.createFunction(
+  {
+    id: "create-user-order",
+    batchEvents: {
+      maxSize: 25,
+      timeout: "5s",
+    },
+  },
+  { event: "order/created" },
+  async ({ events }) => {
+    const orders = events.map(({ data }) => ({
+      userId: data.userId,
+      items: data.items,
+      amount: data.amount,      // ❗️FIXED: was incorrectly set as address
+      address: data.address,    // ✅ Added this back correctly
+      date: data.date,
+    }));
+
+    await connectDB();
+    await Order.insertMany(orders);
+
+    return { success: true, processed: orders.length };
   }
 );

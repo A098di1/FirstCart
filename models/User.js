@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema({
-  _id: {
+  _id: { // 👈 Use Clerk userId as _id
     type: String,
-    required: true, // Clerk user ID
+    required: true,
   },
   name: {
     type: String,
@@ -25,11 +25,9 @@ const userSchema = new mongoose.Schema({
     default: {},
   },
 }, {
-  minimize: false, // Keeps empty objects in output
-  timestamps: true, // Adds createdAt and updatedAt fields
+  minimize: false,
+  timestamps: true,
 });
 
-// Use cached model if it already exists (important in Next.js API routes)
 const User = mongoose.models.User || mongoose.model("User", userSchema);
-
 export default User;

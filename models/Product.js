@@ -1,16 +1,14 @@
 import mongoose from "mongoose";
 
 const productSchema = new mongoose.Schema({
-  userId: { type: String, required: true, ref: "User" },
+  userId: { type: String, required: true },
   name: { type: String, required: true },
-  description: { type: String, required: true }, // ✅ Use description instead of dessertIcon
-  price: { type: Number, required: true },
-  offerPrice: { type: Number, required: true },
-  image: { type: [String], required: true }, // ✅ More specific than just Array
-  category: { type: String, required: true },
-  date: { type: Number, required: true },
+  description: String,
+  category: String,
+  price: Number,
+  offerPrice: Number,
+  image: [String],
+  date: { type: Date, default: Date.now },
 });
 
-const Product = mongoose.models.Product || mongoose.model("Product", productSchema);
-
-export default Product;
+export default mongoose.models.Product || mongoose.model("Product", productSchema);

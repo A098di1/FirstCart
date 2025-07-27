@@ -1,12 +1,10 @@
 import { Outfit } from "next/font/google";
 import "./globals.css";
 import { AppContextProvider } from "@/context/AppContext";
-import { Toaster } from "react-hot-toast";
+import { Toaster } from "sonner"; // ✅ changed here
 import { ClerkProvider } from "@clerk/nextjs";
-import { UserButton } from "@clerk/nextjs";
 
-
-const outfit = Outfit({ subsets: ['latin'], weight: ["300", "400", "500"] })
+const outfit = Outfit({ subsets: ['latin'], weight: ["300", "400", "500"] });
 
 export const metadata = {
   title: "QuickCart - GreatStack",
@@ -17,13 +15,13 @@ export default function RootLayout({ children }) {
   return (
     <ClerkProvider>
       <html lang="en">
-        <body className={`${outfit.className} antialiased text-gray-700`} >
-          <Toaster />
+        <body className={`${outfit.className} antialiased text-gray-700`}>
+          <Toaster richColors position="top-right" /> {/* ✅ This shows toast */}
           <AppContextProvider>
             {children}
           </AppContextProvider>
         </body>
       </html>
-      </ClerkProvider>
+    </ClerkProvider>
   );
 }

@@ -1,11 +1,11 @@
 import { v2 as cloudinary } from 'cloudinary';
-import { auth } from '@clerk/nextjs/server'; // ✅ FIXED: correct import
-import authSeller from "@/lib/authSeller";
-import { NextResponse } from "next/server";
-import Product from "@/models/Product";
-import connectDB from "@/config/db";
+import { getAuth } from '@clerk/nextjs/server'; // ✅ FIXED: use getAuth with request
+import { NextResponse } from 'next/server';
+import authSeller from '@/lib/authSeller';
+import Product from '@/models/Product';
+import connectDB from '@/config/db';
 
-// ✅ Configure Cloudinary from environment variables
+// ✅ Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -14,15 +14,21 @@ cloudinary.config({
 
 export async function POST(request) {
   try {
-    // ✅ Correct way to get userId in app route
-    const { userId } = auth(); // FIXED: get userId directly
+    // ✅ Extract auth from the request headers (Bearer token)
+    const { userId } = getAuth(request);
+    console.log("🧪 userId:", userId);
+
     if (!userId) {
-      return NextResponse.json({ success: false, message: 'Unauthorized user' });
+      console.log("❌ No user ID");
+      return NextResponse.json({ success: false, message: 'Unauthorized user' }, { status: 401 });
     }
 
     const isSeller = await authSeller(userId);
+    console.log("🧪 isSeller:", isSeller);
+
     if (!isSeller) {
-      return NextResponse.json({ success: false, message: 'Not authorized' });
+      console.log("❌ Not a seller");
+      return NextResponse.json({ success: false, message: 'Not authorized' }, { status: 403 });
     }
 
     const formData = await request.formData();
@@ -30,14 +36,17 @@ export async function POST(request) {
     const description = formData.get('description');
     const category = formData.get('category');
     const price = formData.get('price');
-    const offerPrice = formData.get('offerPrice'); // ✅ fix spelling (was lowercase before!)
-    const files = formData.getAll('image'); // ✅ key is 'image' (not 'images')
+    const offerPrice = formData.get('offerPrice');
+    const files = formData.getAll('image');
+
+    console.log("🧪 Form data:", { name, description, category, price, offerPrice });
+    console.log("🧪 Uploaded files:", files.length);
 
     if (!files || files.length === 0) {
-      return NextResponse.json({ success: false, message: 'No images uploaded' });
+      console.log("❌ No image files received");
+      return NextResponse.json({ success: false, message: 'No images uploaded' }, { status: 400 });
     }
 
-    // ✅ Upload all files to Cloudinary
     const uploadedImages = await Promise.all(
       files.map(async (file) => {
         const arrayBuffer = await file.arrayBuffer();
@@ -57,9 +66,11 @@ export async function POST(request) {
     );
 
     const imageUrls = uploadedImages.map((res) => res.secure_url);
+    console.log("🧪 Cloudinary image URLs:", imageUrls);
 
-    // ✅ Save to MongoDB
+    // ✅ Connect to DB
     await connectDB();
+    console.log("✅ Connected to MongoDB");
 
     const newProduct = await Product.create({
       userId,
@@ -72,6 +83,8 @@ export async function POST(request) {
       date: Date.now(),
     });
 
+    console.log("✅ Product saved:", newProduct);
+
     return NextResponse.json({
       success: true,
       message: 'Product uploaded successfully',
@@ -79,7 +92,7 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    console.error("Error in product upload:", error);
-    return NextResponse.json({ success: false, message: error.message });
+    console.error("❌ Error in product upload:", error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
