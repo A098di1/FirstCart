@@ -6,8 +6,13 @@ export async function GET() {
   try {
     await connectDB();
 
-    const products = await Product.find(); // ✅ No auth check here
-    return NextResponse.json({ success: true, products });
+    const products = await Product.find(); // ✅ Don't filter by userId
+    console.log("Fetched Products:", products.length);
+
+    return NextResponse.json({
+      success: true,
+      products,
+    });
   } catch (error) {
     return NextResponse.json({
       success: false,
