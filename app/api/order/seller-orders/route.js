@@ -1,35 +1,51 @@
 import connectDB from "@/config/db";
-import authSeller from "@/lib/authSeller";
-import Address from "@/models/Address";
-import Order from "@/models/Order";
 import { getAuth } from "@clerk/nextjs/server";
+import Product from "@/models/Product";
+import Order from "@/models/Order";
+import authSeller from "@/lib/authSeller";
 import { NextResponse } from "next/server";
 
 export async function GET(request) {
+  try {
+    const { userId } = getAuth(request);
+    await connectDB();
+    await authSeller(request); // ✅ Only allow seller
 
-try {
-    const { userId } = getAuth(request)
-    const isSeller = await authSeller (userId)
+    const allOrders = await Order.find({}).lean(); // lean() for plain JS objects
 
-if (!isSeller){
-    return NextResponse.json({success: false, message: 'not authorized'})
+    const sellerOrders = [];
 
-}
+    for (const order of allOrders) {
+      const filteredItems = [];
 
-await connectDB()
+      for (const item of order.items) {
+        const product = await Product.findById(item.product._id || item.product);
+        if (product?.userId === userId) {
+          filteredItems.push({
+            ...item,
+            product: {
+              _id: product._id,
+              name: product.name,
+              price: product.price,
+              offerPrice: product.offerPrice,
+              image: product.image,
+            }
+          });
+        }
+      }
 
-Address.length
+      if (filteredItems.length > 0) {
+        sellerOrders.push({
+          ...order,
+          items: filteredItems,
+        });
+      }
+    }
 
-const orders = await Order.find({}).populate('address items.product')
+    return NextResponse.json({ success: true, orders: sellerOrders });
 
-return NextResponse.json({success: true, orders})
-
-
-} catch (error) {
-    
-return NextResponse.json({success: false, message:error.message})
-
-
-}
-
+  } catch (error) {
+    console.error("❌ Seller Orders Error:", error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
 }
