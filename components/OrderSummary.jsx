@@ -14,13 +14,15 @@ const OrderSummary = () => {
     user,
     cartItems,
     setCartItems,
+    products
   } = useAppContext();
 
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [userAddresses, setUserAddresses] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // ✅ Fetch addresses from DB
+  // Fetch addresses from DB
   const fetchUserAddresses = async () => {
     try {
       const token = await getToken();
@@ -37,7 +39,7 @@ const OrderSummary = () => {
         toast.error(data.message);
       }
     } catch (error) {
-      toast.error(error.message || 'Failed to load addresses');
+      toast.error(error.response?.data?.message || 'Failed to load addresses');
     }
   };
 
@@ -46,45 +48,62 @@ const OrderSummary = () => {
     setIsDropdownOpen(false);
   };
 
-  // ✅ Create order (placeholder logic)
   const createOrder = async () => {
     if (!selectedAddress) {
       toast.error("Please select a shipping address.");
       return;
     }
 
-    if (getCartCount() === 0) {
+    // Properly convert cartItems to array
+    const cartItemsArray = Object.entries(cartItems)
+      .map(([productId, quantity]) => ({
+        product: productId,
+        quantity: quantity
+      }))
+      .filter(item => item.quantity > 0);
+
+    if (cartItemsArray.length === 0) {
       toast.error("Cart is empty.");
       return;
     }
 
     try {
+      setIsLoading(true);
       const token = await getToken();
-      const orderData = {
-        address: selectedAddress,
-        items: cartItems,
-        totalAmount: getCartAmount(),
-      };
-
-      const { data } = await axios.post('/api/order/create', orderData, {
+      
+      const { data } = await axios.post('/api/order/create', {
+        address: selectedAddress._id,
+        items: cartItemsArray,
+        totalAmount: getCartAmount() + (getCartAmount() * 0.02)
+      }, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (data.success) {
         toast.success("Order placed successfully!");
         setCartItems({});
-        router.push("/order-success");
+        router.push("/order-placed");
       } else {
         toast.error(data.message || "Order failed.");
       }
     } catch (error) {
-      toast.error(error.message || "Something went wrong");
+      toast.error(error.response?.data?.message || "Failed to place order");
+      console.error("Order error:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
     if (user) fetchUserAddresses();
   }, [user]);
+
+  // Calculate total with tax
+  const calculateTotal = () => {
+    const subtotal = getCartAmount();
+    const tax = subtotal * 0.02;
+    return (subtotal + tax).toFixed(2);
+  };
 
   return (
     <div className="w-full md:w-96 bg-gray-500/5 p-5">
@@ -102,6 +121,7 @@ const OrderSummary = () => {
             <button
               className="peer w-full text-left px-4 pr-2 py-2 bg-white text-gray-700 focus:outline-none"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              disabled={isLoading}
             >
               <span>
                 {selectedAddress
@@ -151,8 +171,12 @@ const OrderSummary = () => {
               type="text"
               placeholder="Enter promo code"
               className="flex-grow w-full outline-none p-2.5 text-gray-600 border"
+              disabled={isLoading}
             />
-            <button className="bg-orange-600 text-white px-9 py-2 hover:bg-orange-700">
+            <button 
+              className="bg-orange-600 text-white px-9 py-2 hover:bg-orange-700"
+              disabled={isLoading}
+            >
               Apply
             </button>
           </div>
@@ -164,7 +188,7 @@ const OrderSummary = () => {
         <div className="space-y-4">
           <div className="flex justify-between text-base font-medium">
             <p className="uppercase text-gray-600">Items {getCartCount()}</p>
-            <p className="text-gray-800">{currency}{getCartAmount()}</p>
+            <p className="text-gray-800">{currency}{getCartAmount().toFixed(2)}</p>
           </div>
           <div className="flex justify-between">
             <p className="text-gray-600">Shipping Fee</p>
@@ -173,13 +197,13 @@ const OrderSummary = () => {
           <div className="flex justify-between">
             <p className="text-gray-600">Tax (2%)</p>
             <p className="font-medium text-gray-800">
-              {currency}{Math.floor(getCartAmount() * 0.02)}
+              {currency}{(getCartAmount() * 0.02).toFixed(2)}
             </p>
           </div>
           <div className="flex justify-between text-lg md:text-xl font-medium border-t pt-3">
             <p>Total</p>
             <p>
-              {currency}{getCartAmount() + Math.floor(getCartAmount() * 0.02)}
+              {currency}{calculateTotal()}
             </p>
           </div>
         </div>
@@ -187,9 +211,10 @@ const OrderSummary = () => {
 
       <button
         onClick={createOrder}
-        className="w-full bg-orange-600 text-white py-3 mt-5 hover:bg-orange-700"
+        className="w-full bg-orange-600 text-white py-3 mt-5 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={isLoading || getCartCount() === 0 || !selectedAddress}
       >
-        Place Order
+        {isLoading ? 'Processing...' : 'Place Order'}
       </button>
     </div>
   );

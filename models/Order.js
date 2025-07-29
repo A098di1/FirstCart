@@ -1,42 +1,29 @@
 import mongoose from "mongoose";
 
 const orderSchema = new mongoose.Schema({
-  userId: {
-    type: String,
-    required: true,
-    ref: 'User', // ✅ Capitalized to match User model
-  },
+  userId: { type: String, required: true },
   items: [
     {
       product: {
-        type: String,
-        required: true,
-        ref: 'Product', // ✅ Capitalized
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product", // ✅ Must be 'Product' model
       },
-      quantity: {
-        type: Number,
-        required: true,
-      },
+      quantity: Number,
     },
   ],
-  amount: {
-    type: Number,
-    required: true,
-  },
+  amount: Number,
   address: {
-    type: Object, // ✅ full address object will be saved (from addressSchema)
-    required: true,
-  },
-  status: {
-    type: String,
-    required: true,
-    default: 'Order placed',
+    fullName: String,
+    phoneNumber: String,
+    pincode: Number,
+    area: String,
+    city: String,
+    state: String,
   },
   date: {
     type: Date,
-    default: Date.now, // ✅ More standard for timestamps
+    default: Date.now,
   },
 });
 
-const Order = mongoose.models.Order || mongoose.model('Order', orderSchema);
-export default Order;
+export default mongoose.models.Order || mongoose.model("Order", orderSchema);
