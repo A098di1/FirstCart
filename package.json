@@ -11,6 +11,7 @@
   "dependencies": {
     "@clerk/clerk-sdk-node": "^5.1.6",
     "@clerk/nextjs": "^6.26.0",
+    "@radix-ui/react-slot": "^1.2.3",
     "axios": "^1.11.0",
     "cloudinary": "^2.7.0",
     "inngest": "^3.40.1",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@types/react": "19.1.9",
     "cross-env": "^7.0.3",
     "eslint": "^9",
     "eslint-config-next": "15.1.6",
