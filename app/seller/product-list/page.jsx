@@ -80,17 +80,48 @@ const ProductList = () => {
                     <td className="px-4 py-3 max-sm:hidden">{product.brand || "Generic"}</td>
                     <td className="px-4 py-3 max-sm:hidden">{product.color || "Multi"}</td>
                     <td className="px-4 py-3 font-medium text-black">${product.offerPrice}</td>
-                    <td className="px-4 py-3 max-sm:hidden">
+                    <td className="px-4 py-3 max-sm:hidden flex gap-2">
+                      {/* Visit Button */}
                       <button
                         onClick={() => router.push(`/product/${product._id}`)}
-                        className="flex items-center gap-1 px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md text-xs"
+                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs"
                       >
-                        <span className="hidden md:block">Visit</span>
-                        <Image
-                          className="h-3.5 w-3.5"
-                          src={assets.redirect_icon}
-                          alt="redirect"
-                        />
+                        Visit
+                      </button>
+
+                      {/* Edit Button */}
+                      <button
+                        onClick={() => router.push(`/seller/edit-product/${product._id}`)}
+                        className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md text-xs"
+                      >
+                        Edit
+                      </button>
+
+                      {/* Delete Button */}
+                      <button
+                        onClick={async () => {
+                          const confirmed = confirm("Are you sure you want to delete this product?");
+                          if (!confirmed) return;
+
+                          try {
+                            const token = await getToken();
+                            const { data } = await axios.delete(`/api/product/delete/${product._id}`, {
+                              headers: { Authorization: `Bearer ${token}` },
+                            });
+
+                            if (data.success) {
+                              toast.success("Product deleted successfully");
+                              fetchSellerProduct();
+                            } else {
+                              toast.error(data.message);
+                            }
+                          } catch (error) {
+                            toast.error(error.response?.data?.message || "Delete failed");
+                          }
+                        }}
+                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs"
+                      >
+                        Delete
                       </button>
                     </td>
                   </tr>
