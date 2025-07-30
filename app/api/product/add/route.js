@@ -1,5 +1,5 @@
 import { v2 as cloudinary } from 'cloudinary';
-import { getAuth } from '@clerk/nextjs/server'; // ✅ FIXED: use getAuth with request
+import { getAuth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import authSeller from '@/lib/authSeller';
 import Product from '@/models/Product';
@@ -14,39 +14,38 @@ cloudinary.config({
 
 export async function POST(request) {
   try {
-    // ✅ Extract auth from the request headers (Bearer token)
     const { userId } = getAuth(request);
     console.log("🧪 userId:", userId);
 
     if (!userId) {
-      console.log("❌ No user ID");
       return NextResponse.json({ success: false, message: 'Unauthorized user' }, { status: 401 });
     }
 
     const isSeller = await authSeller(userId);
-    console.log("🧪 isSeller:", isSeller);
-
     if (!isSeller) {
-      console.log("❌ Not a seller");
       return NextResponse.json({ success: false, message: 'Not authorized' }, { status: 403 });
     }
 
     const formData = await request.formData();
-    const name = formData.get('name');
-    const description = formData.get('description');
-    const category = formData.get('category');
-    const price = formData.get('price');
-    const offerPrice = formData.get('offerPrice');
+
+    // ✅ Explicitly extract and log all fields
+    const name = formData.get('name')?.toString() || '';
+    const description = formData.get('description')?.toString() || '';
+    const category = formData.get('category')?.toString() || '';
+    const brand = formData.get('brand')?.toString() || 'Generic';
+    const color = formData.get('color')?.toString() || 'Black';
+    const price = Number(formData.get('price'));
+    const offerPrice = Number(formData.get('offerPrice'));
     const files = formData.getAll('image');
 
-    console.log("🧪 Form data:", { name, description, category, price, offerPrice });
-    console.log("🧪 Uploaded files:", files.length);
+    console.log("🧪 Form fields received:", { name, description, category, brand, color, price, offerPrice });
+    console.log("🧪 Files uploaded:", files.length);
 
     if (!files || files.length === 0) {
-      console.log("❌ No image files received");
       return NextResponse.json({ success: false, message: 'No images uploaded' }, { status: 400 });
     }
 
+    // ✅ Upload each file to Cloudinary
     const uploadedImages = await Promise.all(
       files.map(async (file) => {
         const arrayBuffer = await file.arrayBuffer();
@@ -66,24 +65,23 @@ export async function POST(request) {
     );
 
     const imageUrls = uploadedImages.map((res) => res.secure_url);
-    console.log("🧪 Cloudinary image URLs:", imageUrls);
 
-    // ✅ Connect to DB
     await connectDB();
-    console.log("✅ Connected to MongoDB");
 
     const newProduct = await Product.create({
       userId,
       name,
       description,
       category,
-      price: Number(price),
-      offerPrice: Number(offerPrice),
+      brand,
+      color,
+      price,
+      offerPrice,
       image: imageUrls,
-      date: Date.now(),
+      date: new Date(),
     });
 
-    console.log("✅ Product saved:", newProduct);
+    console.log("✅ Product saved to DB:", newProduct);
 
     return NextResponse.json({
       success: true,
@@ -92,7 +90,7 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    console.error("❌ Error in product upload:", error);
+    console.error("❌ Error during product upload:", error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }

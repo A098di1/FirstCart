@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 import axios from 'axios';
 
 export const AppContext = createContext();
-
 export const useAppContext = () => useContext(AppContext);
 
 export const AppContextProvider = (props) => {
@@ -22,7 +21,7 @@ export const AppContextProvider = (props) => {
   const [isSeller, setIsSeller] = useState(false);
   const [cartItems, setCartItems] = useState({});
 
-  // ✅ Fetch products from backend
+  // ✅ Fetch all products
   const fetchProductData = async () => {
     try {
       const { data } = await axios.get('/api/product/list');
@@ -36,7 +35,7 @@ export const AppContextProvider = (props) => {
     }
   };
 
-  // ✅ Fetch user data
+  // ✅ Fetch user data and cart
   const fetchUserData = async () => {
     try {
       if (user?.publicMetadata?.role === 'seller') {
@@ -86,7 +85,7 @@ export const AppContextProvider = (props) => {
     }, 1000);
   };
 
-  // ✅ Update cart quantity
+  // ✅ Update quantity or remove
   const updateCartQuantity = async (itemId, quantity) => {
     const cartData = structuredClone(cartItems);
     if (quantity === 0) {
@@ -112,12 +111,15 @@ export const AppContextProvider = (props) => {
     }
   };
 
-  // ✅ Cart count
+  // ✅ Get valid cart count
   const getCartCount = () => {
-    return Object.values(cartItems).reduce((acc, quantity) => acc + quantity, 0);
+    return Object.entries(cartItems).reduce((acc, [itemId, quantity]) => {
+      const productExists = products.some(p => p._id === itemId);
+      return productExists ? acc + quantity : acc;
+    }, 0);
   };
 
-  // ✅ Cart total amount
+  // ✅ Get total cart amount
   const getCartAmount = () => {
     let total = 0;
     for (const id in cartItems) {
@@ -129,12 +131,36 @@ export const AppContextProvider = (props) => {
     return Math.floor(total * 100) / 100;
   };
 
-  // On mount: fetch products
+  // ✅ Auto cleanup invalid cart items after products fetched
+  useEffect(() => {
+    const cleanInvalidCartItems = () => {
+      const validIds = new Set(products.map(p => p._id));
+      const updatedCart = { ...cartItems };
+      let hasInvalidItems = false;
+
+      Object.keys(updatedCart).forEach(id => {
+        if (!validIds.has(id)) {
+          delete updatedCart[id];
+          hasInvalidItems = true;
+        }
+      });
+
+      if (hasInvalidItems) {
+        setCartItems(updatedCart);
+        console.log("🧹 Cleaned invalid cart items");
+      }
+    };
+
+    if (products.length > 0) {
+      cleanInvalidCartItems();
+    }
+  }, [products]);
+
+  // Initial fetches
   useEffect(() => {
     fetchProductData();
   }, []);
 
-  // On user login: fetch user data
   useEffect(() => {
     if (user) {
       fetchUserData();

@@ -62,9 +62,14 @@ const SellerOrdersPage = () => {
 
               <div className="mt-3 space-y-2">
                 {order.items.map((item, i) => (
-                  <div key={i} className="flex justify-between text-sm">
-                    <span>{item.product.name} x {item.quantity}</span>
-                    <span>{currency}{item.product.price || item.product.offerPrice}</span>
+                  <div key={i} className="flex flex-col md:flex-row justify-between text-sm border-b py-1">
+                    <div>
+                      <p className="font-medium">{item.product.name} × {item.quantity}</p>
+                      <p className="text-gray-500 text-xs">
+                        Brand: {item.product.brand || "N/A"} | Color: {item.product.color || "N/A"}
+                      </p>
+                    </div>
+                    <p>{currency}{item.product.price || item.product.offerPrice}</p>
                   </div>
                 ))}
               </div>

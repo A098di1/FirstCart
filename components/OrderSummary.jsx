@@ -54,23 +54,24 @@ const OrderSummary = () => {
       return;
     }
 
-    // Properly convert cartItems to array
+    // ✅ Filter out invalid products before creating order
     const cartItemsArray = Object.entries(cartItems)
-      .map(([productId, quantity]) => ({
-        product: productId,
-        quantity: quantity
-      }))
-      .filter(item => item.quantity > 0);
+      .map(([productId, quantity]) => {
+        const productExists = products.find(p => p._id === productId);
+        if (!productExists) return null;
+        return { product: productId, quantity };
+      })
+      .filter(item => item && item.quantity > 0);
 
     if (cartItemsArray.length === 0) {
-      toast.error("Cart is empty.");
+      toast.error("Your cart has invalid or unavailable products. Please update it.");
       return;
     }
 
     try {
       setIsLoading(true);
       const token = await getToken();
-      
+
       const { data } = await axios.post('/api/order/create', {
         address: selectedAddress._id,
         items: cartItemsArray,
@@ -98,7 +99,6 @@ const OrderSummary = () => {
     if (user) fetchUserAddresses();
   }, [user]);
 
-  // Calculate total with tax
   const calculateTotal = () => {
     const subtotal = getCartAmount();
     const tax = subtotal * 0.02;

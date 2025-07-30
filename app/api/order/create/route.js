@@ -1,7 +1,7 @@
 import { inngest } from "@/config/inngest";
 import Product from "@/models/Product";
 import User from "@/models/User";
-import Address from "@/models/Address"; // ✅ Make sure this is imported
+import Address from "@/models/Address"; // ✅ Add this
 import connectDB from "@/config/db";
 import { getAuth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
@@ -9,7 +9,7 @@ import { NextResponse } from "next/server";
 export async function POST(request) {
   try {
     const { userId } = getAuth(request);
-    const { address: addressId, items } = await request.json(); // ✅ Fix here
+    const { address: addressId, items } = await request.json();
 
     if (!userId) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
@@ -21,19 +21,18 @@ export async function POST(request) {
 
     await connectDB();
 
-    // ✅ Fetch full address document
+    // ✅ Fetch address document using addressId
     const addressDoc = await Address.findById(addressId);
     if (!addressDoc) {
       return NextResponse.json({ success: false, message: "Address not found" }, { status: 404 });
     }
 
-    // ✅ Enrich items with product name
+    // ✅ Fetch product details and calculate total
     let totalAmount = 0;
     const enrichedItems = [];
 
     for (const item of items) {
       const product = await Product.findById(item.product);
-
       if (!product) {
         return NextResponse.json({ success: false, message: "Invalid product in cart" }, { status: 400 });
       }
@@ -44,6 +43,8 @@ export async function POST(request) {
         product: {
           _id: product._id,
           name: product.name,
+          brand: product.brand || "N/A",
+          color: product.color || "N/A",
         },
         quantity: item.quantity,
       });
@@ -52,7 +53,7 @@ export async function POST(request) {
     const tax = Math.floor(totalAmount * 0.02);
     const finalAmount = totalAmount + tax;
 
-    // ✅ ⬇️ PLACE THIS BLOCK HERE ⬇️
+    // ✅ Send enriched order data to Inngest
     await inngest.send({
       name: "order/created",
       data: {
@@ -71,7 +72,7 @@ export async function POST(request) {
       },
     });
 
-    // ✅ Clear cart after order
+    // ✅ Clear user cart
     const user = await User.findById(userId);
     if (user) {
       user.cartItems = {};

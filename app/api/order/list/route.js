@@ -1,27 +1,23 @@
-// /api/order/list/route.js
+// /app/api/order/list/route.js
+import { NextResponse } from 'next/server';
+import { getAuth } from '@clerk/nextjs/server';
+import connectDB from '@/config/db';
+import Order from '@/models/Order';
 
-import connectDB from "@/config/db";
-import { getAuth } from "@clerk/nextjs/server";
-import Order from "@/models/Order";
-import { NextResponse } from "next/server";
-
-export async function GET(req) {
-  await connectDB();
-
+export async function GET(request) {
   try {
-    const { userId } = getAuth(req);
+    await connectDB();
+    const { userId } = getAuth(request);
 
     if (!userId) {
-      return NextResponse.json({ success: false, message: "Unauthorized" });
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
-    const orders = await Order.find({ userId })
-      .populate("items.product") // ✅ This line is crucial
-      .sort({ date: -1 });
+    const orders = await Order.find({ userId }).sort({ date: -1 });
 
     return NextResponse.json({ success: true, orders });
   } catch (error) {
-    console.error("Order list error:", error);
-    return NextResponse.json({ success: false, message: "Server error" });
+    console.error("Order fetch failed:", error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }

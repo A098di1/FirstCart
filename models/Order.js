@@ -5,8 +5,10 @@ const orderSchema = new mongoose.Schema({
   items: [
     {
       product: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Product", // ✅ Must be 'Product' model
+        _id: mongoose.Schema.Types.ObjectId,
+        name: String,
+        brand: String,
+        color: String,
       },
       quantity: Number,
     },
@@ -25,5 +27,6 @@ const orderSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
+
 
 export default mongoose.models.Order || mongoose.model("Order", orderSchema);
