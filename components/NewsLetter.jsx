@@ -2,25 +2,36 @@ import React from "react";
 
 const NewsLetter = () => {
   return (
-    <div className="flex flex-col items-center justify-center text-center space-y-2 pt-8 pb-14">
-      <h1 className="md:text-4xl text-2xl font-medium">
+    <section className="flex flex-col items-center justify-center text-center space-y-4 pt-12 pb-20 bg-[#F9FAFB] px-4">
+      <h1 className="md:text-4xl text-2xl font-semibold text-gray-800">
         Subscribe now & get 20% off
       </h1>
-      <p className="md:text-base text-gray-500/80 pb-8">
-        Start exploring. Start saving. Start smiling.
-Welcome to your personal shopping hub — Welcome to Quick Cart! 😊
+      <p className="text-gray-500 max-w-xl">
+        Start exploring. Start saving. Start smiling. <br />
+        Welcome to your personal shopping hub — <strong>Quick Cart</strong>! 😊
       </p>
-      <div className="flex items-center justify-between max-w-2xl w-full md:h-14 h-12">
+
+      {/* Input Section */}
+      <form
+        onSubmit={(e) => e.preventDefault()}
+        className="flex flex-col md:flex-row items-center gap-3 mt-4 w-full max-w-2xl"
+      >
+        <label htmlFor="email" className="sr-only">Email address</label>
         <input
-          className="border border-gray-500/30 rounded-md h-full border-r-0 outline-none w-full rounded-r-none px-3 text-gray-500"
-          type="text"
-          placeholder="Enter your email id"
+          type="email"
+          id="email"
+          required
+          placeholder="Enter your email"
+          className="w-full md:flex-1 h-12 px-4 border border-gray-300 rounded-md md:rounded-r-none focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700"
         />
-        <button className="md:px-12 px-8 h-full text-white bg-orange-600 rounded-md rounded-l-none">
+        <button
+          type="submit"
+          className="h-12 px-6 md:px-10 bg-orange-600 text-white rounded-md md:rounded-l-none hover:bg-orange-700 transition"
+        >
           Subscribe
         </button>
-      </div>
-    </div>
+      </form>
+    </section>
   );
 };
 

@@ -1,10 +1,11 @@
 'use client';
+
 import axios from 'axios';
 import { toast } from 'sonner';
 import { useAppContext } from "@/context/AppContext";
 import React, { useEffect, useState } from "react";
 
-// Format currency as ₹X,XX,XXX.00
+// Format currency in ₹
 const formatINR = (amount) => {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
@@ -54,7 +55,13 @@ const OrderSummary = () => {
     setIsDropdownOpen(false);
   };
 
-  const createOrder = async () => {
+  const calculateTotal = () => {
+    const subtotal = getCartAmount();
+    const tax = subtotal * 0.02;
+    return subtotal + tax;
+  };
+
+  const handlePayment = async () => {
     if (!selectedAddress) {
       toast.error("Please select a shipping address.");
       return;
@@ -77,24 +84,62 @@ const OrderSummary = () => {
       setIsLoading(true);
       const token = await getToken();
 
-      const { data } = await axios.post('/api/order/create', {
-        address: selectedAddress._id,
-        items: cartItemsArray,
-        totalAmount: getCartAmount() + (getCartAmount() * 0.02)
-      }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // Create payment order on server
+      const { data: orderData } = await axios.post(
+        "/api/payment/razorpay-order",
+        { amount: calculateTotal() },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-      if (data.success) {
-        toast.success("Order placed successfully!");
-        setCartItems({});
-        router.push("/order-placed");
-      } else {
-        toast.error(data.message || "Order failed.");
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to place order");
-      console.error("Order error:", error);
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: orderData.amount,
+        currency: "INR",
+        name: "QuickCart",
+        description: "Order Payment",
+        order_id: orderData.id,
+        handler: async function (response) {
+          // Verify payment
+          const { data: verifyRes } = await axios.post("/api/payment/verify", {
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+          });
+
+          if (verifyRes.success) {
+            // Create order
+            const { data } = await axios.post(
+              "/api/order/create",
+              {
+                address: selectedAddress._id,
+                items: cartItemsArray,
+                totalAmount: calculateTotal(),
+              },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            if (data.success) {
+              toast.success("Order placed successfully!");
+              setCartItems({});
+              router.push("/order-placed");
+            } else {
+              toast.error(data.message || "Order failed.");
+            }
+          } else {
+            toast.error("Payment verification failed");
+          }
+        },
+        theme: {
+          color: "#F97316",
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+
+    } catch (err) {
+      console.error(err);
+      toast.error("Payment failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -103,12 +148,6 @@ const OrderSummary = () => {
   useEffect(() => {
     if (user) fetchUserAddresses();
   }, [user]);
-
-  const calculateTotal = () => {
-    const subtotal = getCartAmount();
-    const tax = subtotal * 0.02;
-    return subtotal + tax;
-  };
 
   return (
     <div className="w-full md:w-96 bg-gray-500/5 p-5">
@@ -167,7 +206,7 @@ const OrderSummary = () => {
           </div>
         </div>
 
-        {/* Promo Code Section */}
+        {/* Promo Code */}
         <div>
           <label className="text-base font-medium uppercase text-gray-600 block mb-2">
             Promo Code
@@ -190,7 +229,7 @@ const OrderSummary = () => {
 
         <hr className="border-gray-500/30 my-5" />
 
-        {/* Price Summary */}
+        {/* Summary */}
         <div className="space-y-4">
           <div className="flex justify-between text-base font-medium">
             <p className="uppercase text-gray-600">Items {getCartCount()}</p>
@@ -214,11 +253,11 @@ const OrderSummary = () => {
       </div>
 
       <button
-        onClick={createOrder}
+        onClick={handlePayment}
         className="w-full bg-orange-600 text-white py-3 mt-5 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
         disabled={isLoading || getCartCount() === 0 || !selectedAddress}
       >
-        {isLoading ? 'Processing...' : 'Place Order'}
+        {isLoading ? 'Processing...' : 'Pay & Place Order'}
       </button>
     </div>
   );
