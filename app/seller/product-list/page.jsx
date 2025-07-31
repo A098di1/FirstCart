@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import axios from "axios";
 import { toast } from "sonner";
-
 import { useAppContext } from "@/context/AppContext";
 import Footer from "@/components/seller/Footer";
 import Loading from "@/components/Loading";
@@ -34,10 +33,36 @@ const ProductList = () => {
     }
   };
 
-  useEffect(() => {
-    if (user) {
-      fetchSellerProduct();
+  const formatPrice = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+    }).format(amount);
+  };
+
+  const handleDelete = async (productId) => {
+    const confirmed = confirm("Are you sure you want to delete this product?");
+    if (!confirmed) return;
+
+    try {
+      const token = await getToken();
+      const { data } = await axios.delete(`/api/product/delete/${productId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (data.success) {
+        toast.success("Product deleted successfully");
+        fetchSellerProduct(); // Refresh list
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Delete failed");
     }
+  };
+
+  useEffect(() => {
+    if (user) fetchSellerProduct();
   }, [user]);
 
   return (
@@ -62,8 +87,8 @@ const ProductList = () => {
               </thead>
 
               <tbody className="text-sm text-gray-700">
-                {products.map((product, index) => (
-                  <tr key={index} className="border-t border-gray-200 hover:bg-gray-50">
+                {products.map((product) => (
+                  <tr key={product._id} className="border-t border-gray-200 hover:bg-gray-50">
                     <td className="md:px-4 pl-2 md:pl-4 py-3 flex items-center space-x-3">
                       <div className="bg-gray-200 rounded p-2">
                         <Image
@@ -79,46 +104,24 @@ const ProductList = () => {
                     <td className="px-4 py-3 max-sm:hidden">{product.category || "N/A"}</td>
                     <td className="px-4 py-3 max-sm:hidden">{product.brand || "Generic"}</td>
                     <td className="px-4 py-3 max-sm:hidden">{product.color || "Multi"}</td>
-                    <td className="px-4 py-3 font-medium text-black">${product.offerPrice}</td>
+                    <td className="px-4 py-3 font-medium text-black">
+                      {formatPrice(product.offerPrice)}
+                    </td>
                     <td className="px-4 py-3 max-sm:hidden flex gap-2">
-                      {/* Visit Button */}
                       <button
                         onClick={() => router.push(`/product/${product._id}`)}
                         className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs"
                       >
                         Visit
                       </button>
-
-                      {/* Edit Button */}
                       <button
                         onClick={() => router.push(`/seller/edit-product/${product._id}`)}
                         className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md text-xs"
                       >
                         Edit
                       </button>
-
-                      {/* Delete Button */}
                       <button
-                        onClick={async () => {
-                          const confirmed = confirm("Are you sure you want to delete this product?");
-                          if (!confirmed) return;
-
-                          try {
-                            const token = await getToken();
-                            const { data } = await axios.delete(`/api/product/delete/${product._id}`, {
-                              headers: { Authorization: `Bearer ${token}` },
-                            });
-
-                            if (data.success) {
-                              toast.success("Product deleted successfully");
-                              fetchSellerProduct();
-                            } else {
-                              toast.error(data.message);
-                            }
-                          } catch (error) {
-                            toast.error(error.response?.data?.message || "Delete failed");
-                          }
-                        }}
+                        onClick={() => handleDelete(product._id)}
                         className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs"
                       >
                         Delete

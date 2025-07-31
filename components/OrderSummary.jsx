@@ -4,9 +4,16 @@ import { toast } from 'sonner';
 import { useAppContext } from "@/context/AppContext";
 import React, { useEffect, useState } from "react";
 
+// Format currency as ₹X,XX,XXX.00
+const formatINR = (amount) => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+  }).format(amount);
+};
+
 const OrderSummary = () => {
   const {
-    currency,
     router,
     getCartCount,
     getCartAmount,
@@ -22,7 +29,6 @@ const OrderSummary = () => {
   const [userAddresses, setUserAddresses] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch addresses from DB
   const fetchUserAddresses = async () => {
     try {
       const token = await getToken();
@@ -54,7 +60,6 @@ const OrderSummary = () => {
       return;
     }
 
-    // ✅ Filter out invalid products before creating order
     const cartItemsArray = Object.entries(cartItems)
       .map(([productId, quantity]) => {
         const productExists = products.find(p => p._id === productId);
@@ -102,7 +107,7 @@ const OrderSummary = () => {
   const calculateTotal = () => {
     const subtotal = getCartAmount();
     const tax = subtotal * 0.02;
-    return (subtotal + tax).toFixed(2);
+    return subtotal + tax;
   };
 
   return (
@@ -112,6 +117,7 @@ const OrderSummary = () => {
       </h2>
       <hr className="border-gray-500/30 my-5" />
       <div className="space-y-6">
+
         {/* Address Dropdown */}
         <div>
           <label className="text-base font-medium uppercase text-gray-600 block mb-2">
@@ -188,7 +194,7 @@ const OrderSummary = () => {
         <div className="space-y-4">
           <div className="flex justify-between text-base font-medium">
             <p className="uppercase text-gray-600">Items {getCartCount()}</p>
-            <p className="text-gray-800">{currency}{getCartAmount().toFixed(2)}</p>
+            <p className="text-gray-800">{formatINR(getCartAmount())}</p>
           </div>
           <div className="flex justify-between">
             <p className="text-gray-600">Shipping Fee</p>
@@ -197,14 +203,12 @@ const OrderSummary = () => {
           <div className="flex justify-between">
             <p className="text-gray-600">Tax (2%)</p>
             <p className="font-medium text-gray-800">
-              {currency}{(getCartAmount() * 0.02).toFixed(2)}
+              {formatINR(getCartAmount() * 0.02)}
             </p>
           </div>
           <div className="flex justify-between text-lg md:text-xl font-medium border-t pt-3">
             <p>Total</p>
-            <p>
-              {currency}{calculateTotal()}
-            </p>
+            <p>{formatINR(calculateTotal())}</p>
           </div>
         </div>
       </div>

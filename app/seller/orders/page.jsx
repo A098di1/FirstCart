@@ -74,9 +74,14 @@ const SellerOrdersPage = () => {
                 ))}
               </div>
 
-              <p className="mt-2 text-right font-semibold text-gray-800">
-                Total: {currency}{order.amount}
-              </p>
+              <p className="font-semibold text-lg text-gray-800">
+  {new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(order.amount)}
+</p>
+
             </div>
           ))}
         </div>

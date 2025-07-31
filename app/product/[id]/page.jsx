@@ -1,4 +1,5 @@
-"use client"
+"use client";
+
 import { useEffect, useState } from "react";
 import { assets } from "@/assets/assets";
 import ProductCard from "@/components/ProductCard";
@@ -12,7 +13,7 @@ import React from "react";
 
 const Product = () => {
   const { id } = useParams();
-  const { products, router, addToCart } = useAppContext();
+  const { products, router, addToCart, currency } = useAppContext(); // ✅ currency added
 
   const [mainImage, setMainImage] = useState(null);
   const [productData, setProductData] = useState(null);
@@ -20,7 +21,7 @@ const Product = () => {
   const fetchProductData = async () => {
     const product = products.find(product => product._id === id);
     setProductData(product);
-  }
+  };
 
   useEffect(() => {
     fetchProductData();
@@ -76,18 +77,19 @@ const Product = () => {
               </div>
               <p>(4.5)</p>
             </div>
-            <p className="text-gray-600 mt-3">
-              {productData.description}
-            </p>
+            <p className="text-gray-600 mt-3">{productData.description}</p>
+
+            {/* ✅ Currency updated here */}
             <p className="text-3xl font-medium mt-6">
-              ${productData.offerPrice}
+              {currency}{productData.offerPrice}
               <span className="text-base font-normal text-gray-800/60 line-through ml-2">
-                ${productData.price}
+                {currency}{productData.price}
               </span>
             </p>
+
             <hr className="bg-gray-600 my-6" />
 
-            {/* ✅ Brand, Color, Category Table */}
+            {/* Brand, Color, Category Table */}
             <div className="overflow-x-auto">
               <table className="table-auto border-collapse w-full max-w-72">
                 <tbody>
@@ -130,14 +132,18 @@ const Product = () => {
         {/* Featured Products */}
         <div className="flex flex-col items-center">
           <div className="flex flex-col items-center mb-4 mt-16">
-            <p className="text-3xl font-medium">Featured <span className="font-medium text-orange-600">Products</span></p>
+            <p className="text-3xl font-medium">
+              Featured <span className="font-medium text-orange-600">Products</span>
+            </p>
             <div className="w-28 h-0.5 bg-orange-600 mt-2"></div>
           </div>
+
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 mt-6 pb-14 w-full">
             {products.slice(0, 5).map((product, index) => (
               <ProductCard key={index} product={product} />
             ))}
           </div>
+
           <button className="px-8 py-2 mb-16 border rounded text-gray-500/70 hover:bg-slate-50/90 transition">
             See more
           </button>
@@ -145,7 +151,9 @@ const Product = () => {
       </div>
       <Footer />
     </>
-  ) : <Loading />;
+  ) : (
+    <Loading />
+  );
 };
 
 export default Product;
