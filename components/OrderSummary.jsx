@@ -85,11 +85,18 @@ const OrderSummary = () => {
       const token = await getToken();
 
       // Create payment order on server
-      const { data: orderData } = await axios.post(
-        "/api/payment/razorpay-order",
-        { amount: calculateTotal() },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+     const amountInPaise = Math.round(calculateTotal() * 100);
+console.log("Amount in paise:", amountInPaise);
+
+const { data: orderData } = await axios.post(
+  "/api/payment/razorpay-order",
+  { amount: amountInPaise },
+  { headers: { Authorization: `Bearer ${token}` } }
+);
+
+
+
+      console.log("Razorpay Key:", process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID);
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
@@ -99,7 +106,6 @@ const OrderSummary = () => {
         description: "Order Payment",
         order_id: orderData.id,
         handler: async function (response) {
-          // Verify payment
           const { data: verifyRes } = await axios.post("/api/payment/verify", {
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
@@ -107,7 +113,6 @@ const OrderSummary = () => {
           });
 
           if (verifyRes.success) {
-            // Create order
             const { data } = await axios.post(
               "/api/order/create",
               {
@@ -156,8 +161,6 @@ const OrderSummary = () => {
       </h2>
       <hr className="border-gray-500/30 my-5" />
       <div className="space-y-6">
-
-        {/* Address Dropdown */}
         <div>
           <label className="text-base font-medium uppercase text-gray-600 block mb-2">
             Select Address
@@ -206,7 +209,6 @@ const OrderSummary = () => {
           </div>
         </div>
 
-        {/* Promo Code */}
         <div>
           <label className="text-base font-medium uppercase text-gray-600 block mb-2">
             Promo Code
@@ -229,7 +231,6 @@ const OrderSummary = () => {
 
         <hr className="border-gray-500/30 my-5" />
 
-        {/* Summary */}
         <div className="space-y-4">
           <div className="flex justify-between text-base font-medium">
             <p className="uppercase text-gray-600">Items {getCartCount()}</p>
