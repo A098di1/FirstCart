@@ -22,11 +22,28 @@ const orderSchema = new mongoose.Schema({
     city: String,
     state: String,
   },
+  razorpay_order_id: String,
+  razorpay_payment_id: String,
+  razorpay_signature: String,
+  payment_status: {
+    type: String,
+    enum: ['Pending', 'Paid', 'Failed'],
+    default: 'Pending',
+  },
+  payment_method: {
+    type: String,
+    enum: ['COD', 'Online'],
+    default: 'COD',
+  },
+  status: {
+    type: String,
+    enum: ['Order Placed', 'Shipped', 'Out for Delivery', 'Delivered','Cancelled'],
+    default: 'Order Placed'
+  },
   date: {
     type: Date,
     default: Date.now,
   },
 });
-
 
 export default mongoose.models.Order || mongoose.model("Order", orderSchema);

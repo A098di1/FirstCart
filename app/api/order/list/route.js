@@ -15,7 +15,11 @@ export async function GET(request) {
 
     const orders = await Order.find({ userId }).sort({ date: -1 });
 
-    return NextResponse.json({ success: true, orders });
+    return NextResponse.json({
+      success: true,
+      orders,
+    });
+
   } catch (error) {
     console.error("Order fetch failed:", error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

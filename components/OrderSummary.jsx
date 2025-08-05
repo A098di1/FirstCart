@@ -5,7 +5,6 @@ import { toast } from 'sonner';
 import { useAppContext } from "@/context/AppContext";
 import React, { useEffect, useState } from "react";
 
-// Format currency in ₹
 const formatINR = (amount) => {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
@@ -61,7 +60,7 @@ const OrderSummary = () => {
     return subtotal + tax;
   };
 
-  const handlePayment = async () => {
+  const handleCODOrder = async () => {
     if (!selectedAddress) {
       toast.error("Please select a shipping address.");
       return;
@@ -84,67 +83,26 @@ const OrderSummary = () => {
       setIsLoading(true);
       const token = await getToken();
 
-      // Create payment order on server
-     const amountInPaise = Math.round(calculateTotal() * 100);
-console.log("Amount in paise:", amountInPaise);
-
-const { data: orderData } = await axios.post(
-  "/api/payment/razorpay-order",
-  { amount: amountInPaise },
-  { headers: { Authorization: `Bearer ${token}` } }
-);
-
-
-
-      console.log("Razorpay Key:", process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID);
-
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: orderData.amount,
-        currency: "INR",
-        name: "QuickCart",
-        description: "Order Payment",
-        order_id: orderData.id,
-        handler: async function (response) {
-          const { data: verifyRes } = await axios.post("/api/payment/verify", {
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature,
-          });
-
-          if (verifyRes.success) {
-            const { data } = await axios.post(
-              "/api/order/create",
-              {
-                address: selectedAddress._id,
-                items: cartItemsArray,
-                totalAmount: calculateTotal(),
-              },
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-
-            if (data.success) {
-              toast.success("Order placed successfully!");
-              setCartItems({});
-              router.push("/order-placed");
-            } else {
-              toast.error(data.message || "Order failed.");
-            }
-          } else {
-            toast.error("Payment verification failed");
-          }
+      const { data } = await axios.post(
+        "/api/order/create",
+        {
+          address: selectedAddress._id,
+          items: cartItemsArray,
+          totalAmount: calculateTotal(),
+          payment_method: "COD",
         },
-        theme: {
-          color: "#F97316",
-        },
-      };
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-      const razorpay = new window.Razorpay(options);
-      razorpay.open();
-
-    } catch (err) {
-      console.error(err);
-      toast.error("Payment failed. Please try again.");
+      if (data.success) {
+        toast.success("Order placed successfully!");
+        setCartItems({});
+        router.push("/order-placed");
+      } else {
+        toast.error(data.message || "Order failed.");
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Order creation failed.");
     } finally {
       setIsLoading(false);
     }
@@ -254,11 +212,11 @@ const { data: orderData } = await axios.post(
       </div>
 
       <button
-        onClick={handlePayment}
+        onClick={handleCODOrder}
         className="w-full bg-orange-600 text-white py-3 mt-5 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
         disabled={isLoading || getCartCount() === 0 || !selectedAddress}
       >
-        {isLoading ? 'Processing...' : 'Pay & Place Order'}
+        {isLoading ? 'Processing...' : 'Place Order (Cash On Delivery)'}
       </button>
     </div>
   );

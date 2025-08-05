@@ -1,43 +1,51 @@
-import { inngest } from "@/config/inngest";
+import { NextResponse } from "next/server";
+import { getAuth } from "@clerk/nextjs/server";
+import connectDB from "@/config/db";
 import Product from "@/models/Product";
 import User from "@/models/User";
-import Address from "@/models/Address"; // ✅ Add this
-import connectDB from "@/config/db";
-import { getAuth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import Address from "@/models/Address";
+import Order from "@/models/Order";
 
-export async function POST(request) {
+export async function POST(req) {
   try {
-    const { userId } = getAuth(request);
-    const { address: addressId, items } = await request.json();
+    const { userId } = getAuth(req);
+    const {
+      address: addressId,
+      items,
+      totalAmount,
+      payment_method = "COD", // default to COD
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+    } = await req.json();
 
     if (!userId) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
-    if (!addressId || !items || items.length === 0) {
-      return NextResponse.json({ success: false, message: "Invalid data" }, { status: 400 });
+    if (!addressId || !items || items.length === 0 || !totalAmount) {
+      return NextResponse.json({ success: false, message: "Invalid order data" }, { status: 400 });
     }
 
     await connectDB();
 
-    // ✅ Fetch address document using addressId
+    // ✅ Validate address
     const addressDoc = await Address.findById(addressId);
     if (!addressDoc) {
       return NextResponse.json({ success: false, message: "Address not found" }, { status: 404 });
     }
 
-    // ✅ Fetch product details and calculate total
-    let totalAmount = 0;
+    // ✅ Validate products and calculate total
+    let calculatedTotal = 0;
     const enrichedItems = [];
 
     for (const item of items) {
       const product = await Product.findById(item.product);
       if (!product) {
-        return NextResponse.json({ success: false, message: "Invalid product in cart" }, { status: 400 });
+        return NextResponse.json({ success: false, message: "Invalid product" }, { status: 400 });
       }
 
-      totalAmount += product.offerPrice * item.quantity;
+      calculatedTotal += product.offerPrice * item.quantity;
 
       enrichedItems.push({
         product: {
@@ -50,27 +58,35 @@ export async function POST(request) {
       });
     }
 
-    const tax = Math.floor(totalAmount * 0.02);
-    const finalAmount = totalAmount + tax;
+    const tax = Math.floor(calculatedTotal * 0.02);
+    const finalAmount = calculatedTotal + tax;
 
-    // ✅ Send enriched order data to Inngest
-    await inngest.send({
-      name: "order/created",
-      data: {
-        userId,
-        address: {
-          fullName: addressDoc.fullName,
-          phoneNumber: addressDoc.phoneNumber,
-          pincode: addressDoc.pincode,
-          area: addressDoc.area,
-          city: addressDoc.city,
-          state: addressDoc.state,
-        },
-        items: enrichedItems,
-        amount: finalAmount,
-        date: Date.now(),
+    // ✅ Compare with client total
+    if (Math.floor(totalAmount) !== Math.floor(finalAmount)) {
+      return NextResponse.json({ success: false, message: "Amount mismatch" }, { status: 400 });
+    }
+
+    // ✅ Save the order
+    const newOrder = new Order({
+      userId,
+      items: enrichedItems,
+      amount: finalAmount,
+      address: {
+        fullName: addressDoc.fullName,
+        phoneNumber: addressDoc.phoneNumber,
+        pincode: addressDoc.pincode,
+        area: addressDoc.area,
+        city: addressDoc.city,
+        state: addressDoc.state,
       },
+      payment_method,
+      payment_status: payment_method === "Online" ? "Paid" : "Pending",
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
     });
+
+    await newOrder.save();
 
     // ✅ Clear user cart
     const user = await User.findById(userId);
@@ -80,9 +96,8 @@ export async function POST(request) {
     }
 
     return NextResponse.json({ success: true, message: "Order placed successfully!" });
-
   } catch (error) {
-    console.error("❌ Order Error:", error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    console.error("❌ Order create error:", error);
+    return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }

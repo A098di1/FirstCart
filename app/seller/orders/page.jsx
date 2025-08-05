@@ -31,6 +31,27 @@ const SellerOrdersPage = () => {
     }
   };
 
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      const token = await getToken();
+      const { data } = await axios.patch(`/api/order/update-status`, {
+        orderId,
+        status: newStatus
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (data.success) {
+        toast.success("Order status updated");
+        fetchSellerOrders();
+      } else {
+        toast.error(data.message || "Failed to update status");
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Error updating order status");
+    }
+  };
+
   useEffect(() => {
     if (user) {
       fetchSellerOrders();
@@ -74,14 +95,32 @@ const SellerOrdersPage = () => {
                 ))}
               </div>
 
-              <p className="font-semibold text-lg text-gray-800">
-  {new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(order.amount)}
-</p>
+              <p className="font-semibold text-lg text-gray-800 mt-3">
+                {new Intl.NumberFormat('en-IN', {
+                  style: 'currency',
+                  currency: 'INR',
+                  maximumFractionDigits: 0,
+                }).format(order.amount)}
+              </p>
 
+              <div className="mt-4">
+                <label className="text-sm font-medium text-gray-700 mr-2">Status:</label>
+                {order.status === "Cancelled" ? (
+                  <span className="text-red-600 font-semibold">{order.status}</span>
+                ) : (
+                  <select
+                    className="border text-sm px-2 py-1 rounded"
+                    value={order.status}
+                    onChange={(e) => handleStatusChange(order._id, e.target.value)}
+                  >
+                    <option value="Order Placed">Order Placed</option>
+                    <option value="Shipped">Shipped</option>
+                    <option value="Out for Delivery">Out for Delivery</option>
+                    <option value="Delivered">Delivered</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                )}
+              </div>
             </div>
           ))}
         </div>

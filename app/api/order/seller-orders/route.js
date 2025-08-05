@@ -11,7 +11,7 @@ export async function GET(request) {
     await connectDB();
     await authSeller(request); // ✅ Only allow seller
 
-    const allOrders = await Order.find({}).lean();
+    const allOrders = await Order.find({}).lean(); // lean() for plain JS objects
 
     const sellerOrders = [];
 
@@ -24,14 +24,15 @@ export async function GET(request) {
           filteredItems.push({
             ...item,
             product: {
-              _id: product._id,
-              name: product.name,
-              price: product.price,
-              offerPrice: product.offerPrice,
-              image: product.image,
-              brand: product.brand,       // ✅ FIXED
-              color: product.color,       // ✅ FIXED
-            }
+  _id: product._id,
+  name: product.name,
+  price: product.price,
+  offerPrice: product.offerPrice,
+  image: product.image,
+  brand: product.brand,     // ✅ add this
+  color: product.color,     // ✅ add this
+}
+
           });
         }
       }
